@@ -1,11 +1,36 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState } from 'react';
+import Header from '@/components/Header';
+import HeroSection from '@/components/HeroSection';
+import LanguageGrid from '@/components/LanguageGrid';
+import FeaturedSessions from '@/components/FeaturedSessions';
+import Testimonials from '@/components/Testimonials';
+import PaymentSection from '@/components/PaymentSection';
+import Footer from '@/components/Footer';
+import WhatsAppFloat from '@/components/WhatsAppFloat';
 
 const Index = () => {
+  const [language, setLanguage] = useState('en');
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const isRTL = language === 'ar';
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className={`min-h-screen ${isDarkMode ? 'dark' : ''} ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="bg-background text-foreground transition-colors duration-300">
+        <Header 
+          language={language} 
+          setLanguage={setLanguage}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
+        />
+        <HeroSection language={language} />
+        <LanguageGrid language={language} />
+        <FeaturedSessions language={language} />
+        <PaymentSection language={language} />
+        <Testimonials language={language} />
+        <Footer language={language} />
+        <WhatsAppFloat language={language} />
       </div>
     </div>
   );
