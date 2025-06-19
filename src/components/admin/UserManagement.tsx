@@ -1,20 +1,14 @@
 
 import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Plus, Search, Edit, Trash2, UserPlus, Filter } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Pencil, Trash2, Plus, Search, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface User {
@@ -24,390 +18,330 @@ interface User {
   role: 'student' | 'teacher' | 'admin';
   status: 'active' | 'inactive';
   createdAt: string;
-  lastLogin?: string;
 }
 
 interface UserManagementProps {
-  language: string;
+  language?: string;
 }
 
-const userSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
-  role: z.enum(['student', 'teacher', 'admin']),
-  status: z.enum(['active', 'inactive']),
-});
-
-const UserManagement = ({ language }: UserManagementProps) => {
-  const { toast } = useToast();
+const UserManagement = ({ language = 'en' }: UserManagementProps) => {
   const [users, setUsers] = useState<User[]>([
     {
       id: '1',
-      name: 'Ahmed Hassan',
-      email: 'ahmed@example.com',
+      name: 'Ahmed Ali',
+      email: 'ahmed.ali@example.com',
       role: 'student',
       status: 'active',
-      createdAt: '2024-01-15',
-      lastLogin: '2024-01-20'
+      createdAt: '2024-01-15'
     },
     {
       id: '2',
       name: 'Sarah Johnson',
-      email: 'sarah@example.com',
+      email: 'sarah.johnson@example.com',
       role: 'teacher',
       status: 'active',
-      createdAt: '2024-01-10',
-      lastLogin: '2024-01-19'
+      createdAt: '2024-01-10'
     },
     {
       id: '3',
-      name: 'Carlos Rodriguez',
-      email: 'carlos@example.com',
+      name: 'Mohamed Hassan',
+      email: 'mohamed.hassan@example.com',
+      role: 'admin',
+      status: 'active',
+      createdAt: '2024-01-05'
+    },
+    {
+      id: '4',
+      name: 'Maria Garcia',
+      email: 'maria.garcia@example.com',
       role: 'student',
       status: 'inactive',
-      createdAt: '2024-01-05',
-      lastLogin: '2024-01-18'
+      createdAt: '2024-02-01'
     }
   ]);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-
-  const itemsPerPage = 10;
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const { toast } = useToast();
 
   const translations = {
     en: {
       title: 'User Management',
-      description: 'Manage students, teachers, and administrators',
       addUser: 'Add User',
-      search: 'Search users...',
-      filterRole: 'Filter by role',
-      filterStatus: 'Filter by status',
+      editUser: 'Edit User',
       name: 'Name',
       email: 'Email',
       role: 'Role',
       status: 'Status',
-      lastLogin: 'Last Login',
+      createdAt: 'Created',
       actions: 'Actions',
-      edit: 'Edit',
-      delete: 'Delete',
-      active: 'Active',
-      inactive: 'Inactive',
+      search: 'Search users...',
+      filterByRole: 'Filter by Role',
+      filterByStatus: 'Filter by Status',
+      all: 'All',
       student: 'Student',
       teacher: 'Teacher',
       admin: 'Admin',
-      all: 'All',
-      createUser: 'Create User',
-      editUser: 'Edit User',
-      deleteUser: 'Delete User',
-      deleteConfirmation: 'Are you sure you want to delete this user?',
-      cancel: 'Cancel',
+      active: 'Active',
+      inactive: 'Inactive',
       save: 'Save',
-      create: 'Create',
-      userCreated: 'User created successfully',
-      userUpdated: 'User updated successfully',
-      userDeleted: 'User deleted successfully'
+      cancel: 'Cancel',
+      delete: 'Delete',
+      edit: 'Edit'
     },
     ar: {
       title: 'إدارة المستخدمين',
-      description: 'إدارة الطلاب والمعلمين والمديرين',
       addUser: 'إضافة مستخدم',
-      search: 'البحث عن المستخدمين...',
-      filterRole: 'تصفية حسب الدور',
-      filterStatus: 'تصفية حسب الحالة',
+      editUser: 'تعديل المستخدم',
       name: 'الاسم',
       email: 'البريد الإلكتروني',
       role: 'الدور',
       status: 'الحالة',
-      lastLogin: 'آخر دخول',
+      createdAt: 'تاريخ الإنشاء',
       actions: 'الإجراءات',
-      edit: 'تعديل',
-      delete: 'حذف',
-      active: 'نشط',
-      inactive: 'غير نشط',
+      search: 'البحث في المستخدمين...',
+      filterByRole: 'تصفية حسب الدور',
+      filterByStatus: 'تصفية حسب الحالة',
+      all: 'الكل',
       student: 'طالب',
       teacher: 'معلم',
       admin: 'مدير',
-      all: 'الكل',
-      createUser: 'إنشاء مستخدم',
-      editUser: 'تعديل مستخدم',
-      deleteUser: 'حذف مستخدم',
-      deleteConfirmation: 'هل أنت متأكد من حذف هذا المستخدم؟',
-      cancel: 'إلغاء',
+      active: 'نشط',
+      inactive: 'غير نشط',
       save: 'حفظ',
-      create: 'إنشاء',
-      userCreated: 'تم إنشاء المستخدم بنجاح',
-      userUpdated: 'تم تحديث المستخدم بنجاح',
-      userDeleted: 'تم حذف المستخدم بنجاح'
+      cancel: 'إلغاء',
+      delete: 'حذف',
+      edit: 'تعديل'
     },
     es: {
       title: 'Gestión de Usuarios',
-      description: 'Gestionar estudiantes, profesores y administradores',
       addUser: 'Agregar Usuario',
-      search: 'Buscar usuarios...',
-      filterRole: 'Filtrar por rol',
-      filterStatus: 'Filtrar por estado',
+      editUser: 'Editar Usuario',
       name: 'Nombre',
       email: 'Correo Electrónico',
       role: 'Rol',
       status: 'Estado',
-      lastLogin: 'Último Acceso',
+      createdAt: 'Creado',
       actions: 'Acciones',
-      edit: 'Editar',
-      delete: 'Eliminar',
-      active: 'Activo',
-      inactive: 'Inactivo',
+      search: 'Buscar usuarios...',
+      filterByRole: 'Filtrar por Rol',
+      filterByStatus: 'Filtrar por Estado',
+      all: 'Todos',
       student: 'Estudiante',
       teacher: 'Profesor',
       admin: 'Administrador',
-      all: 'Todos',
-      createUser: 'Crear Usuario',
-      editUser: 'Editar Usuario',
-      deleteUser: 'Eliminar Usuario',
-      deleteConfirmation: '¿Estás seguro de que quieres eliminar este usuario?',
-      cancel: 'Cancelar',
+      active: 'Activo',
+      inactive: 'Inactivo',
       save: 'Guardar',
-      create: 'Crear',
-      userCreated: 'Usuario creado exitosamente',
-      userUpdated: 'Usuario actualizado exitosamente',
-      userDeleted: 'Usuario eliminado exitosamente'
+      cancel: 'Cancelar',
+      delete: 'Eliminar',
+      edit: 'Editar'
     }
   };
 
   const t = translations[language as keyof typeof translations];
 
-  const form = useForm<z.infer<typeof userSchema>>({
-    resolver: zodResolver(userSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      role: 'student',
-      status: 'active',
-    },
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    role: 'student' as 'student' | 'teacher' | 'admin',
+    status: 'active' as 'active' | 'inactive'
   });
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    
+    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage);
-
-  const handleCreateUser = (data: z.infer<typeof userSchema>) => {
-    const newUser: User = {
-      id: Date.now().toString(),
-      ...data,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    setUsers([...users, newUser]);
-    setIsCreateDialogOpen(false);
-    form.reset();
-    toast({
-      title: t.userCreated,
-      variant: "default",
-    });
-  };
-
-  const handleEditUser = (data: z.infer<typeof userSchema>) => {
-    if (!editingUser) return;
+    if (editingUser) {
+      setUsers(prev => prev.map(user => 
+        user.id === editingUser.id 
+          ? { ...user, ...formData }
+          : user
+      ));
+      toast({
+        title: "User updated successfully",
+        description: "The user has been updated."
+      });
+    } else {
+      const newUser: User = {
+        id: Date.now().toString(),
+        ...formData,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      setUsers(prev => [...prev, newUser]);
+      toast({
+        title: "User created successfully",
+        description: "The new user has been added."
+      });
+    }
     
-    setUsers(users.map(user => 
-      user.id === editingUser.id 
-        ? { ...user, ...data }
-        : user
-    ));
+    setIsDialogOpen(false);
     setEditingUser(null);
-    form.reset();
-    toast({
-      title: t.userUpdated,
-      variant: "default",
+    setFormData({
+      name: '',
+      email: '',
+      role: 'student',
+      status: 'active'
     });
   };
 
-  const handleDeleteUser = (userId: string) => {
-    setUsers(users.filter(user => user.id !== userId));
-    toast({
-      title: t.userDeleted,
-      variant: "default",
-    });
-  };
-
-  const openEditDialog = (user: User) => {
+  const handleEdit = (user: User) => {
     setEditingUser(user);
-    form.reset({
+    setFormData({
       name: user.name,
       email: user.email,
       role: user.role,
-      status: user.status,
+      status: user.status
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setUsers(prev => prev.filter(user => user.id !== id));
+    toast({
+      title: "User deleted",
+      description: "The user has been removed."
     });
   };
 
-  const getRoleBadgeColor = (role: string) => {
+  const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'admin': return 'bg-red-100 text-red-800';
-      case 'teacher': return 'bg-blue-100 text-blue-800';
-      case 'student': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'admin': return 'destructive';
+      case 'teacher': return 'default';
+      case 'student': return 'secondary';
+      default: return 'secondary';
     }
   };
 
-  const getStatusBadgeColor = (status: string) => {
-    return status === 'active' 
-      ? 'bg-green-100 text-green-800' 
-      : 'bg-gray-100 text-gray-800';
-  };
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t.title}</CardTitle>
-        <CardDescription>{t.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col space-y-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t.search}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder={t.filterRole} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t.all}</SelectItem>
-                <SelectItem value="student">{t.student}</SelectItem>
-                <SelectItem value="teacher">{t.teacher}</SelectItem>
-                <SelectItem value="admin">{t.admin}</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder={t.filterStatus} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t.all}</SelectItem>
-                <SelectItem value="active">{t.active}</SelectItem>
-                <SelectItem value="inactive">{t.inactive}</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-emerald-600 hover:bg-emerald-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t.addUser}
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">{t.title}</h2>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="w-4 h-4 mr-2" />
+              {t.addUser}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>{editingUser ? t.editUser : t.addUser}</DialogTitle>
+              <DialogDescription>
+                Fill in the user details below.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="name">{t.name}</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">{t.email}</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="role">{t.role}</Label>
+                <Select value={formData.role} onValueChange={(value: 'student' | 'teacher' | 'admin') => setFormData({...formData, role: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">{t.student}</SelectItem>
+                    <SelectItem value="teacher">{t.teacher}</SelectItem>
+                    <SelectItem value="admin">{t.admin}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="status">{t.status}</Label>
+                <Select value={formData.status} onValueChange={(value: 'active' | 'inactive') => setFormData({...formData, status: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">{t.active}</SelectItem>
+                    <SelectItem value="inactive">{t.inactive}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  {t.cancel}
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{t.createUser}</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleCreateUser)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t.name}</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t.email}</FormLabel>
-                          <FormControl>
-                            <Input type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="role"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t.role}</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="student">{t.student}</SelectItem>
-                              <SelectItem value="teacher">{t.teacher}</SelectItem>
-                              <SelectItem value="admin">{t.admin}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t.status}</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="active">{t.active}</SelectItem>
-                              <SelectItem value="inactive">{t.inactive}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                        {t.cancel}
-                      </Button>
-                      <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                        {t.create}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                  {t.save}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-        <div className="rounded-md border">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t.search}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <Select value={filterRole} onValueChange={setFilterRole}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder={t.filterByRole} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t.all}</SelectItem>
+            <SelectItem value="student">{t.student}</SelectItem>
+            <SelectItem value="teacher">{t.teacher}</SelectItem>
+            <SelectItem value="admin">{t.admin}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder={t.filterByStatus} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t.all}</SelectItem>
+            <SelectItem value="active">{t.active}</SelectItem>
+            <SelectItem value="inactive">{t.inactive}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Users Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.title}</CardTitle>
+          <CardDescription>
+            Manage students, teachers, and administrators
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
@@ -415,187 +349,52 @@ const UserManagement = ({ language }: UserManagementProps) => {
                 <TableHead>{t.email}</TableHead>
                 <TableHead>{t.role}</TableHead>
                 <TableHead>{t.status}</TableHead>
-                <TableHead>{t.lastLogin}</TableHead>
+                <TableHead>{t.createdAt}</TableHead>
                 <TableHead>{t.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedUsers.map((user) => (
+              {filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Badge className={getRoleBadgeColor(user.role)}>
-                      {t[user.role as keyof typeof t]}
+                    <Badge variant={getRoleBadgeVariant(user.role)}>
+                      {user.role === 'student' ? t.student : 
+                       user.role === 'teacher' ? t.teacher : t.admin}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getStatusBadgeColor(user.status)}>
-                      {t[user.status as keyof typeof t]}
+                    <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
+                      {user.status === 'active' ? t.active : t.inactive}
                     </Badge>
                   </TableCell>
-                  <TableCell>{user.lastLogin || '-'}</TableCell>
+                  <TableCell>{user.createdAt}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>{t.editUser}</DialogTitle>
-                          </DialogHeader>
-                          <Form {...form}>
-                            <form onSubmit={form.handleSubmit(handleEditUser)} className="space-y-4">
-                              <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>{t.name}</FormLabel>
-                                    <FormControl>
-                                      <Input {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name="email"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>{t.email}</FormLabel>
-                                    <FormControl>
-                                      <Input type="email" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name="role"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>{t.role}</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="student">{t.student}</SelectItem>
-                                        <SelectItem value="teacher">{t.teacher}</SelectItem>
-                                        <SelectItem value="admin">{t.admin}</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>{t.status}</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="active">{t.active}</SelectItem>
-                                        <SelectItem value="inactive">{t.inactive}</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <DialogFooter>
-                                <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
-                                  {t.cancel}
-                                </Button>
-                                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                                  {t.save}
-                                </Button>
-                              </DialogFooter>
-                            </form>
-                          </Form>
-                        </DialogContent>
-                      </Dialog>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{t.deleteUser}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t.deleteConfirmation}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              {t.delete}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(user)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(user.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious 
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      onClick={() => setCurrentPage(page)}
-                      isActive={currentPage === page}
-                      className="cursor-pointer"
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext 
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

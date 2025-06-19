@@ -1,19 +1,15 @@
+
 import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Plus, Search, Edit, Trash2, FileQuestion, CheckCircle, XCircle } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Pencil, Trash2, Plus, Search, FileQuestion } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface QuizQuestion {
@@ -32,1107 +28,662 @@ interface Quiz {
   program: string;
   difficulty: 'easy' | 'medium' | 'hard';
   timeLimit: number;
-  totalQuestions: number;
-  totalPoints: number;
   status: 'draft' | 'published';
   questions: QuizQuestion[];
-  createdAt: string;
+  totalQuestions: number;
+  totalPoints: number;
   attempts: number;
+  createdAt: string;
 }
 
 interface QuizManagementProps {
-  language: string;
+  language?: string;
 }
 
-const quizSchema = z.object({
-  title: z.string().min(2, 'Quiz title must be at least 2 characters'),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
-  program: z.string().min(1, 'Program is required'),
-  difficulty: z.enum(['easy', 'medium', 'hard']),
-  timeLimit: z.number().min(1, 'Time limit must be at least 1 minute'),
-  status: z.enum(['draft', 'published']),
-});
-
-const questionSchema = z.object({
-  type: z.enum(['multiple-choice', 'true-false', 'short-answer']),
-  question: z.string().min(5, 'Question must be at least 5 characters'),
-  options: z.array(z.string()).optional(),
-  correctAnswer: z.string().min(1, 'Correct answer is required'),
-  points: z.number().min(1, 'Points must be at least 1'),
-});
-
-const QuizManagement = ({ language }: QuizManagementProps) => {
-  const { toast } = useToast();
+const QuizManagement = ({ language = 'en' }: QuizManagementProps) => {
   const [quizzes, setQuizzes] = useState<Quiz[]>([
     {
       id: '1',
       title: 'English Grammar Basics',
-      description: 'Test your knowledge of English grammar fundamentals',
+      description: 'Test your understanding of basic English grammar',
       program: 'English for Beginners',
       difficulty: 'easy',
       timeLimit: 30,
-      totalQuestions: 10,
-      totalPoints: 50,
       status: 'published',
-      questions: [
-        {
-          id: '1',
-          type: 'multiple-choice',
-          question: 'What is the past tense of "go"?',
-          options: ['went', 'goed', 'gone', 'going'],
-          correctAnswer: 'went',
-          points: 5
-        }
-      ],
-      createdAt: '2024-01-15',
-      attempts: 23
+      questions: [],
+      totalQuestions: 10,
+      totalPoints: 100,
+      attempts: 156,
+      createdAt: '2024-01-20'
     },
     {
       id: '2',
       title: 'Arabic Vocabulary',
-      description: 'Test your Arabic vocabulary knowledge',
-      program: 'Arabic Intermediate',
+      description: 'Business Arabic vocabulary test',
+      program: 'Business Arabic',
       difficulty: 'medium',
       timeLimit: 45,
-      totalQuestions: 15,
-      totalPoints: 75,
-      status: 'draft',
+      status: 'published',
       questions: [],
-      createdAt: '2024-01-10',
-      attempts: 0
+      totalQuestions: 15,
+      totalPoints: 150,
+      attempts: 89,
+      createdAt: '2024-02-05'
     }
   ]);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
-  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
+  const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
+  const [currentQuizId, setCurrentQuizId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterProgram, setFilterProgram] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const { toast } = useToast();
 
   const translations = {
     en: {
       title: 'Quiz Management',
-      description: 'Create and manage quizzes and assessments',
-      addQuiz: 'Create Quiz',
-      search: 'Search quizzes...',
-      filterStatus: 'Filter by status',
-      filterDifficulty: 'Filter by difficulty',
+      addQuiz: 'Add Quiz',
+      editQuiz: 'Edit Quiz',
+      addQuestion: 'Add Question',
+      editQuestion: 'Edit Question',
       quizTitle: 'Quiz Title',
+      description: 'Description',
       program: 'Program',
       difficulty: 'Difficulty',
-      timeLimit: 'Time Limit',
-      questions: 'Questions',
-      points: 'Points',
+      timeLimit: 'Time Limit (minutes)',
       status: 'Status',
+      questions: 'Questions',
+      totalPoints: 'Total Points',
       attempts: 'Attempts',
+      createdAt: 'Created',
       actions: 'Actions',
-      edit: 'Edit',
-      delete: 'Delete',
-      view: 'View',
+      search: 'Search quizzes...',
+      filterByProgram: 'Filter by Program',
+      filterByStatus: 'Filter by Status',
+      all: 'All',
       draft: 'Draft',
       published: 'Published',
       easy: 'Easy',
       medium: 'Medium',
       hard: 'Hard',
-      all: 'All',
-      createQuiz: 'Create Quiz',
-      editQuiz: 'Edit Quiz',
-      deleteQuiz: 'Delete Quiz',
-      deleteConfirmation: 'Are you sure you want to delete this quiz?',
-      cancel: 'Cancel',
       save: 'Save',
-      create: 'Create',
-      quizCreated: 'Quiz created successfully',
-      quizUpdated: 'Quiz updated successfully',
-      quizDeleted: 'Quiz deleted successfully',
-      addQuestion: 'Add Question',
-      editQuestion: 'Edit Question',
+      cancel: 'Cancel',
+      delete: 'Delete',
+      edit: 'Edit',
+      manageQuestions: 'Manage Questions',
       questionType: 'Question Type',
       questionText: 'Question',
       options: 'Options',
       correctAnswer: 'Correct Answer',
-      questionPoints: 'Points',
+      points: 'Points',
       multipleChoice: 'Multiple Choice',
       trueFalse: 'True/False',
       shortAnswer: 'Short Answer',
-      option: 'Option',
-      true: 'True',
-      false: 'False',
-      minutes: 'minutes',
-      questionCreated: 'Question added successfully',
-      questionUpdated: 'Question updated successfully',
-      questionDeleted: 'Question deleted successfully'
+      addOption: 'Add Option',
+      removeOption: 'Remove Option'
     },
     ar: {
       title: 'إدارة الاختبارات',
-      description: 'إنشاء وإدارة الاختبارات والتقييمات',
-      addQuiz: 'إنشاء اختبار',
-      search: 'البحث عن الاختبارات...',
-      filterStatus: 'تصفية حسب الحالة',
-      filterDifficulty: 'تصفية حسب الصعوبة',
+      addQuiz: 'إضافة اختبار',
+      editQuiz: 'تعديل الاختبار',
+      addQuestion: 'إضافة سؤال',
+      editQuestion: 'تعديل السؤال',
       quizTitle: 'عنوان الاختبار',
+      description: 'الوصف',
       program: 'البرنامج',
       difficulty: 'الصعوبة',
-      timeLimit: 'مدة الاختبار',
-      questions: 'الأسئلة',
-      points: 'النقاط',
+      timeLimit: 'الوقت المحدد (دقائق)',
       status: 'الحالة',
+      questions: 'الأسئلة',
+      totalPoints: 'إجمالي النقاط',
       attempts: 'المحاولات',
+      createdAt: 'تاريخ الإنشاء',
       actions: 'الإجراءات',
-      edit: 'تعديل',
-      delete: 'حذف',
-      view: 'عرض',
+      search: 'البحث في الاختبارات...',
+      filterByProgram: 'تصفية حسب البرنامج',
+      filterByStatus: 'تصفية حسب الحالة',
+      all: 'الكل',
       draft: 'مسودة',
       published: 'منشور',
       easy: 'سهل',
       medium: 'متوسط',
       hard: 'صعب',
-      all: 'الكل',
-      createQuiz: 'إنشاء اختبار',
-      editQuiz: 'تعديل اختبار',
-      deleteQuiz: 'حذف اختبار',
-      deleteConfirmation: 'هل أنت متأكد من حذف هذا الاختبار؟',
-      cancel: 'إلغاء',
       save: 'حفظ',
-      create: 'إنشاء',
-      quizCreated: 'تم إنشاء الاختبار بنجاح',
-      quizUpdated: 'تم تحديث الاختبار بنجاح',
-      quizDeleted: 'تم حذف الاختبار بنجاح',
-      addQuestion: 'إضافة سؤال',
-      editQuestion: 'تعديل سؤال',
+      cancel: 'إلغاء',
+      delete: 'حذف',
+      edit: 'تعديل',
+      manageQuestions: 'إدارة الأسئلة',
       questionType: 'نوع السؤال',
       questionText: 'السؤال',
       options: 'الخيارات',
       correctAnswer: 'الإجابة الصحيحة',
-      questionPoints: 'النقاط',
+      points: 'النقاط',
       multipleChoice: 'اختيار متعدد',
-      trueFalse: 'صح/خطأ',
+      trueFalse: 'صح أو خطأ',
       shortAnswer: 'إجابة قصيرة',
-      option: 'خيار',
-      true: 'صح',
-      false: 'خطأ',
-      minutes: 'دقيقة',
-      questionCreated: 'تم إضافة السؤال بنجاح',
-      questionUpdated: 'تم تحديث السؤال بنجاح',
-      questionDeleted: 'تم حذف السؤال بنجاح'
+      addOption: 'إضافة خيار',
+      removeOption: 'إزالة خيار'
     },
     es: {
       title: 'Gestión de Cuestionarios',
-      description: 'Crear y gestionar cuestionarios y evaluaciones',
-      addQuiz: 'Crear Cuestionario',
-      search: 'Buscar cuestionarios...',
-      filterStatus: 'Filtrar por estado',
-      filterDifficulty: 'Filtrar por dificultad',
+      addQuiz: 'Agregar Cuestionario',
+      editQuiz: 'Editar Cuestionario',
+      addQuestion: 'Agregar Pregunta',
+      editQuestion: 'Editar Pregunta',
       quizTitle: 'Título del Cuestionario',
+      description: 'Descripción',
       program: 'Programa',
       difficulty: 'Dificultad',
-      timeLimit: 'Límite de Tiempo',
-      questions: 'Preguntas',
-      points: 'Puntos',
+      timeLimit: 'Tiempo Límite (minutos)',
       status: 'Estado',
+      questions: 'Preguntas',
+      totalPoints: 'Puntos Totales',
       attempts: 'Intentos',
+      createdAt: 'Creado',
       actions: 'Acciones',
-      edit: 'Editar',
-      delete: 'Eliminar',
-      view: 'Ver',
+      search: 'Buscar cuestionarios...',
+      filterByProgram: 'Filtrar por Programa',
+      filterByStatus: 'Filtrar por Estado',
+      all: 'Todos',
       draft: 'Borrador',
       published: 'Publicado',
       easy: 'Fácil',
       medium: 'Medio',
       hard: 'Difícil',
-      all: 'Todos',
-      createQuiz: 'Crear Cuestionario',
-      editQuiz: 'Editar Cuestionario',
-      deleteQuiz: 'Eliminar Cuestionario',
-      deleteConfirmation: '¿Estás seguro de que quieres eliminar este cuestionario?',
-      cancel: 'Cancelar',
       save: 'Guardar',
-      create: 'Crear',
-      quizCreated: 'Cuestionario creado exitosamente',
-      quizUpdated: 'Cuestionario actualizado exitosamente',
-      quizDeleted: 'Cuestionario eliminado exitosamente',
-      addQuestion: 'Agregar Pregunta',
-      editQuestion: 'Editar Pregunta',
+      cancel: 'Cancelar',
+      delete: 'Eliminar',
+      edit: 'Editar',
+      manageQuestions: 'Gestionar Preguntas',
       questionType: 'Tipo de Pregunta',
       questionText: 'Pregunta',
       options: 'Opciones',
       correctAnswer: 'Respuesta Correcta',
-      questionPoints: 'Puntos',
+      points: 'Puntos',
       multipleChoice: 'Opción Múltiple',
       trueFalse: 'Verdadero/Falso',
       shortAnswer: 'Respuesta Corta',
-      option: 'Opción',
-      true: 'Verdadero',
-      false: 'Falso',
-      minutes: 'minutos',
-      questionCreated: 'Pregunta agregada exitosamente',
-      questionUpdated: 'Pregunta actualizada exitosamente',
-      questionDeleted: 'Pregunta eliminada exitosamente'
+      addOption: 'Agregar Opción',
+      removeOption: 'Eliminar Opción'
     }
   };
 
   const t = translations[language as keyof typeof translations];
 
-  const quizForm = useForm<z.infer<typeof quizSchema>>({
-    resolver: zodResolver(quizSchema),
-    defaultValues: {
+  const [quizFormData, setQuizFormData] = useState({
+    title: '',
+    description: '',
+    program: '',
+    difficulty: 'easy' as 'easy' | 'medium' | 'hard',
+    timeLimit: 30,
+    status: 'draft' as 'draft' | 'published'
+  });
+
+  const [questionFormData, setQuestionFormData] = useState({
+    type: 'multiple-choice' as 'multiple-choice' | 'true-false' | 'short-answer',
+    question: '',
+    options: ['', ''],
+    correctAnswer: '',
+    points: 10
+  });
+
+  const filteredQuizzes = quizzes.filter(quiz => {
+    const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quiz.program.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesProgram = filterProgram === 'all' || quiz.program === filterProgram;
+    const matchesStatus = filterStatus === 'all' || quiz.status === filterStatus;
+    return matchesSearch && matchesProgram && matchesStatus;
+  });
+
+  const handleQuizSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (editingQuiz) {
+      setQuizzes(prev => prev.map(quiz => 
+        quiz.id === editingQuiz.id 
+          ? { ...quiz, ...quizFormData }
+          : quiz
+      ));
+      toast({
+        title: "Quiz updated successfully",
+        description: "The quiz has been updated."
+      });
+    } else {
+      const newQuiz: Quiz = {
+        id: Date.now().toString(),
+        ...quizFormData,
+        questions: [],
+        totalQuestions: 0,
+        totalPoints: 0,
+        attempts: 0,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      setQuizzes(prev => [...prev, newQuiz]);
+      toast({
+        title: "Quiz created successfully",
+        description: "The new quiz has been added."
+      });
+    }
+    
+    setIsQuizDialogOpen(false);
+    setEditingQuiz(null);
+    setQuizFormData({
       title: '',
       description: '',
       program: '',
       difficulty: 'easy',
       timeLimit: 30,
-      status: 'draft',
-    },
-  });
+      status: 'draft'
+    });
+  };
 
-  const questionForm = useForm<z.infer<typeof questionSchema>>({
-    resolver: zodResolver(questionSchema),
-    defaultValues: {
+  const handleQuestionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (editingQuestion) {
+      setQuestions(prev => prev.map(question => 
+        question.id === editingQuestion.id 
+          ? { ...question, ...questionFormData }
+          : question
+      ));
+    } else {
+      const newQuestion: QuizQuestion = {
+        id: Date.now().toString(),
+        type: questionFormData.type,
+        question: questionFormData.question,
+        options: questionFormData.type === 'multiple-choice' ? questionFormData.options : undefined,
+        correctAnswer: questionFormData.correctAnswer,
+        points: questionFormData.points
+      };
+      setQuestions(prev => [...prev, newQuestion]);
+    }
+    
+    setIsQuestionDialogOpen(false);
+    setEditingQuestion(null);
+    setQuestionFormData({
       type: 'multiple-choice',
       question: '',
-      options: ['', '', '', ''],
+      options: ['', ''],
       correctAnswer: '',
-      points: 5,
-    },
-  });
-
-  const [questionType, setQuestionType] = useState<'multiple-choice' | 'true-false' | 'short-answer'>('multiple-choice');
-
-  const filteredQuizzes = quizzes.filter(quiz => {
-    const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quiz.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || quiz.status === statusFilter;
-    const matchesDifficulty = difficultyFilter === 'all' || quiz.difficulty === difficultyFilter;
-    
-    return matchesSearch && matchesStatus && matchesDifficulty;
-  });
-
-  const handleCreateQuiz = (data: z.infer<typeof quizSchema>) => {
-    const newQuiz: Quiz = {
-      id: Date.now().toString(),
-      ...data,
-      totalQuestions: 0,
-      totalPoints: 0,
-      questions: [],
-      createdAt: new Date().toISOString().split('T')[0],
-      attempts: 0,
-    };
-    
-    setQuizzes([...quizzes, newQuiz]);
-    setIsCreateDialogOpen(false);
-    quizForm.reset();
-    toast({
-      title: t.quizCreated,
-      variant: "default",
+      points: 10
     });
   };
 
-  const handleEditQuiz = (data: z.infer<typeof quizSchema>) => {
-    if (!editingQuiz) return;
-    
-    setQuizzes(quizzes.map(quiz => 
-      quiz.id === editingQuiz.id 
-        ? { ...quiz, ...data }
-        : quiz
-    ));
-    setEditingQuiz(null);
-    quizForm.reset();
-    toast({
-      title: t.quizUpdated,
-      variant: "default",
-    });
-  };
-
-  const handleDeleteQuiz = (quizId: string) => {
-    setQuizzes(quizzes.filter(quiz => quiz.id !== quizId));
-    toast({
-      title: t.quizDeleted,
-      variant: "default",
-    });
-  };
-
-  const handleCreateQuestion = (data: z.infer<typeof questionSchema>) => {
-    if (!selectedQuiz) return;
-    
-    const newQuestion: QuizQuestion = {
-      id: Date.now().toString(),
-      ...data,
-    };
-    
-    const updatedQuiz = {
-      ...selectedQuiz,
-      questions: [...selectedQuiz.questions, newQuestion],
-      totalQuestions: selectedQuiz.questions.length + 1,
-      totalPoints: selectedQuiz.totalPoints + data.points,
-    };
-    
-    setQuizzes(quizzes.map(quiz => 
-      quiz.id === selectedQuiz.id ? updatedQuiz : quiz
-    ));
-    setSelectedQuiz(updatedQuiz);
-    setIsQuestionDialogOpen(false);
-    questionForm.reset();
-    toast({
-      title: t.questionCreated,
-      variant: "default",
-    });
-  };
-
-  const handleEditQuestion = (data: z.infer<typeof questionSchema>) => {
-    if (!selectedQuiz || !editingQuestion) return;
-    
-    const updatedQuestions = selectedQuiz.questions.map(q => 
-      q.id === editingQuestion.id ? { ...q, ...data } : q
-    );
-    
-    const updatedQuiz = {
-      ...selectedQuiz,
-      questions: updatedQuestions,
-      totalPoints: updatedQuestions.reduce((sum, q) => sum + q.points, 0),
-    };
-    
-    setQuizzes(quizzes.map(quiz => 
-      quiz.id === selectedQuiz.id ? updatedQuiz : quiz
-    ));
-    setSelectedQuiz(updatedQuiz);
-    setEditingQuestion(null);
-    questionForm.reset();
-    toast({
-      title: t.questionUpdated,
-      variant: "default",
-    });
-  };
-
-  const handleDeleteQuestion = (questionId: string) => {
-    if (!selectedQuiz) return;
-    
-    const updatedQuestions = selectedQuiz.questions.filter(q => q.id !== questionId);
-    const updatedQuiz = {
-      ...selectedQuiz,
-      questions: updatedQuestions,
-      totalQuestions: updatedQuestions.length,
-      totalPoints: updatedQuestions.reduce((sum, q) => sum + q.points, 0),
-    };
-    
-    setQuizzes(quizzes.map(quiz => 
-      quiz.id === selectedQuiz.id ? updatedQuiz : quiz
-    ));
-    setSelectedQuiz(updatedQuiz);
-    toast({
-      title: t.questionDeleted,
-      variant: "default",
-    });
-  };
-
-  const openEditDialog = (quiz: Quiz) => {
+  const handleEditQuiz = (quiz: Quiz) => {
     setEditingQuiz(quiz);
-    quizForm.reset({
+    setQuizFormData({
       title: quiz.title,
       description: quiz.description,
       program: quiz.program,
       difficulty: quiz.difficulty,
       timeLimit: quiz.timeLimit,
-      status: quiz.status,
+      status: quiz.status
     });
+    setIsQuizDialogOpen(true);
   };
 
-  const openQuestionDialog = (question?: QuizQuestion) => {
-    if (question) {
-      setEditingQuestion(question);
-      setQuestionType(question.type);
-      questionForm.reset({
-        type: question.type,
-        question: question.question,
-        options: question.options || ['', '', '', ''],
-        correctAnswer: question.correctAnswer,
-        points: question.points,
-      });
-    } else {
-      setEditingQuestion(null);
-      setQuestionType('multiple-choice');
-      questionForm.reset();
-    }
+  const handleEditQuestion = (question: QuizQuestion) => {
+    setEditingQuestion(question);
+    setQuestionFormData({
+      type: question.type,
+      question: question.question,
+      options: question.options || ['', ''],
+      correctAnswer: question.correctAnswer,
+      points: question.points
+    });
     setIsQuestionDialogOpen(true);
   };
 
-  const getStatusBadgeColor = (status: string) => {
-    return status === 'published' 
-      ? 'bg-green-100 text-green-800' 
-      : 'bg-yellow-100 text-yellow-800';
+  const handleDeleteQuiz = (id: string) => {
+    setQuizzes(prev => prev.filter(quiz => quiz.id !== id));
+    toast({
+      title: "Quiz deleted",
+      description: "The quiz has been removed."
+    });
   };
 
-  const getDifficultyBadgeColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'hard': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const handleDeleteQuestion = (id: string) => {
+    setQuestions(prev => prev.filter(question => question.id !== id));
+  };
+
+  const addOption = () => {
+    setQuestionFormData({
+      ...questionFormData,
+      options: [...questionFormData.options, '']
+    });
+  };
+
+  const removeOption = (index: number) => {
+    setQuestionFormData({
+      ...questionFormData,
+      options: questionFormData.options.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateOption = (index: number, value: string) => {
+    const newOptions = [...questionFormData.options];
+    newOptions[index] = value;
+    setQuestionFormData({
+      ...questionFormData,
+      options: newOptions
+    });
   };
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">{t.title}</h2>
+        <Dialog open={isQuizDialogOpen} onOpenChange={setIsQuizDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="w-4 h-4 mr-2" />
+              {t.addQuiz}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>{editingQuiz ? t.editQuiz : t.addQuiz}</DialogTitle>
+              <DialogDescription>
+                Fill in the quiz details below.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleQuizSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="title">{t.quizTitle}</Label>
+                <Input
+                  id="title"
+                  value={quizFormData.title}
+                  onChange={(e) => setQuizFormData({...quizFormData, title: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">{t.description}</Label>
+                <Textarea
+                  id="description"
+                  value={quizFormData.description}
+                  onChange={(e) => setQuizFormData({...quizFormData, description: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="program">{t.program}</Label>
+                <Input
+                  id="program"
+                  value={quizFormData.program}
+                  onChange={(e) => setQuizFormData({...quizFormData, program: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="difficulty">{t.difficulty}</Label>
+                <Select value={quizFormData.difficulty} onValueChange={(value: 'easy' | 'medium' | 'hard') => setQuizFormData({...quizFormData, difficulty: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">{t.easy}</SelectItem>
+                    <SelectItem value="medium">{t.medium}</SelectItem>
+                    <SelectItem value="hard">{t.hard}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="timeLimit">{t.timeLimit}</Label>
+                <Input
+                  id="timeLimit"
+                  type="number"
+                  value={quizFormData.timeLimit}
+                  onChange={(e) => setQuizFormData({...quizFormData, timeLimit: Number(e.target.value)})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="status">{t.status}</Label>
+                <Select value={quizFormData.status} onValueChange={(value: 'draft' | 'published') => setQuizFormData({...quizFormData, status: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">{t.draft}</SelectItem>
+                    <SelectItem value="published">{t.published}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsQuizDialogOpen(false)}>
+                  {t.cancel}
+                </Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                  {t.save}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t.search}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <Select value={filterProgram} onValueChange={setFilterProgram}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={t.filterByProgram} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t.all}</SelectItem>
+            <SelectItem value="English for Beginners">English for Beginners</SelectItem>
+            <SelectItem value="Business Arabic">Business Arabic</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={t.filterByStatus} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t.all}</SelectItem>
+            <SelectItem value="draft">{t.draft}</SelectItem>
+            <SelectItem value="published">{t.published}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Quizzes Table */}
       <Card>
         <CardHeader>
           <CardTitle>{t.title}</CardTitle>
-          <CardDescription>{t.description}</CardDescription>
+          <CardDescription>
+            Create and manage quizzes for your language programs
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col space-y-4 mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t.search}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder={t.filterStatus} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t.all}</SelectItem>
-                  <SelectItem value="draft">{t.draft}</SelectItem>
-                  <SelectItem value="published">{t.published}</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder={t.filterDifficulty} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t.all}</SelectItem>
-                  <SelectItem value="easy">{t.easy}</SelectItem>
-                  <SelectItem value="medium">{t.medium}</SelectItem>
-                  <SelectItem value="hard">{t.hard}</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-emerald-600 hover:bg-emerald-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t.addQuiz}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>{t.createQuiz}</DialogTitle>
-                  </DialogHeader>
-                  <Form {...quizForm}>
-                    <form onSubmit={quizForm.handleSubmit(handleCreateQuiz)} className="space-y-4">
-                      <FormField
-                        control={quizForm.control}
-                        name="title"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t.quizTitle}</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={quizForm.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t.description}</FormLabel>
-                            <FormControl>
-                              <Textarea {...field} rows={3} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={quizForm.control}
-                          name="program"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t.program}</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="English for Beginners">English for Beginners</SelectItem>
-                                  <SelectItem value="Arabic Intermediate">Arabic Intermediate</SelectItem>
-                                  <SelectItem value="Spanish Advanced">Spanish Advanced</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={quizForm.control}
-                          name="difficulty"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t.difficulty}</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="easy">{t.easy}</SelectItem>
-                                  <SelectItem value="medium">{t.medium}</SelectItem>
-                                  <SelectItem value="hard">{t.hard}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={quizForm.control}
-                          name="timeLimit"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t.timeLimit} ({t.minutes})</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  {...field} 
-                                  onChange={(e) => field.onChange(Number(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={quizForm.control}
-                          name="status"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t.status}</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="draft">{t.draft}</SelectItem>
-                                  <SelectItem value="published">{t.published}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                          {t.cancel}
-                        </Button>
-                        <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                          {t.create}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t.quizTitle}</TableHead>
-                  <TableHead>{t.program}</TableHead>
-                  <TableHead>{t.difficulty}</TableHead>
-                  <TableHead>{t.timeLimit}</TableHead>
-                  <TableHead>{t.questions}</TableHead>
-                  <TableHead>{t.points}</TableHead>
-                  <TableHead>{t.status}</TableHead>
-                  <TableHead>{t.attempts}</TableHead>
-                  <TableHead>{t.actions}</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t.quizTitle}</TableHead>
+                <TableHead>{t.program}</TableHead>
+                <TableHead>{t.difficulty}</TableHead>
+                <TableHead>{t.timeLimit}</TableHead>
+                <TableHead>{t.status}</TableHead>
+                <TableHead>{t.questions}</TableHead>
+                <TableHead>{t.attempts}</TableHead>
+                <TableHead>{t.actions}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredQuizzes.map((quiz) => (
+                <TableRow key={quiz.id}>
+                  <TableCell className="font-medium">{quiz.title}</TableCell>
+                  <TableCell>{quiz.program}</TableCell>
+                  <TableCell>
+                    <Badge variant={quiz.difficulty === 'easy' ? 'default' : quiz.difficulty === 'medium' ? 'secondary' : 'destructive'}>
+                      {quiz.difficulty === 'easy' ? t.easy : quiz.difficulty === 'medium' ? t.medium : t.hard}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{quiz.timeLimit} min</TableCell>
+                  <TableCell>
+                    <Badge variant={quiz.status === 'published' ? 'default' : 'secondary'}>
+                      {quiz.status === 'published' ? t.published : t.draft}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{quiz.totalQuestions}</TableCell>
+                  <TableCell>{quiz.attempts}</TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditQuiz(quiz)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setCurrentQuizId(quiz.id);
+                          setIsQuestionDialogOpen(true);
+                        }}
+                      >
+                        <FileQuestion className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteQuiz(quiz.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredQuizzes.map((quiz) => (
-                  <TableRow key={quiz.id}>
-                    <TableCell className="font-medium">{quiz.title}</TableCell>
-                    <TableCell>{quiz.program}</TableCell>
-                    <TableCell>
-                      <Badge className={getDifficultyBadgeColor(quiz.difficulty)}>
-                        {t[quiz.difficulty as keyof typeof t]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{quiz.timeLimit} {t.minutes}</TableCell>
-                    <TableCell>{quiz.totalQuestions}</TableCell>
-                    <TableCell>{quiz.totalPoints}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusBadgeColor(quiz.status)}>
-                        {t[quiz.status as keyof typeof t]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{quiz.attempts}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setSelectedQuiz(quiz)}
-                          className="text-emerald-600 hover:text-emerald-700"
-                        >
-                          <FileQuestion className="h-4 w-4" />
-                        </Button>
-                        
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => openEditDialog(quiz)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle>{t.editQuiz}</DialogTitle>
-                            </DialogHeader>
-                            <Form {...quizForm}>
-                              <form onSubmit={quizForm.handleSubmit(handleEditQuiz)} className="space-y-4">
-                                <FormField
-                                  control={quizForm.control}
-                                  name="title"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>{t.quizTitle}</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <FormField
-                                  control={quizForm.control}
-                                  name="description"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>{t.description}</FormLabel>
-                                      <FormControl>
-                                        <Textarea {...field} rows={3} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <FormField
-                                    control={quizForm.control}
-                                    name="program"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>{t.program}</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                          <FormControl>
-                                            <SelectTrigger>
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent>
-                                            <SelectItem value="English for Beginners">English for Beginners</SelectItem>
-                                            <SelectItem value="Arabic Intermediate">Arabic Intermediate</SelectItem>
-                                            <SelectItem value="Spanish Advanced">Spanish Advanced</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={quizForm.control}
-                                    name="difficulty"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>{t.difficulty}</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                          <FormControl>
-                                            <SelectTrigger>
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent>
-                                            <SelectItem value="easy">{t.easy}</SelectItem>
-                                            <SelectItem value="medium">{t.medium}</SelectItem>
-                                            <SelectItem value="hard">{t.hard}</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <FormField
-                                    control={quizForm.control}
-                                    name="timeLimit"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>{t.timeLimit} ({t.minutes})</FormLabel>
-                                        <FormControl>
-                                          <Input 
-                                            type="number" 
-                                            {...field} 
-                                            onChange={(e) => field.onChange(Number(e.target.value))}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={quizForm.control}
-                                    name="status"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>{t.status}</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                          <FormControl>
-                                            <SelectTrigger>
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent>
-                                            <SelectItem value="draft">{t.draft}</SelectItem>
-                                            <SelectItem value="published">{t.published}</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
-                                
-                                <DialogFooter>
-                                  <Button type="button" variant="outline" onClick={() => setEditingQuiz(null)}>
-                                    {t.cancel}
-                                  </Button>
-                                  <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                                    {t.save}
-                                  </Button>
-                                </DialogFooter>
-                              </form>
-                            </Form>
-                          </DialogContent>
-                        </Dialog>
-                        
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>{t.deleteQuiz}</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {t.deleteConfirmation}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDeleteQuiz(quiz.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                {t.delete}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      {/* Quiz Questions Detail View */}
-      {selectedQuiz && (
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>{selectedQuiz.title} - {t.questions}</CardTitle>
-                <CardDescription>
-                  {selectedQuiz.totalQuestions} {t.questions} • {selectedQuiz.totalPoints} {t.points}
-                </CardDescription>
-              </div>
-              <div className="flex space-x-2">
-                <Dialog open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                      onClick={() => openQuestionDialog()}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      {t.addQuestion}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl">
-                    <DialogHeader>
-                      <DialogTitle>
-                        {editingQuestion ? t.editQuestion : t.addQuestion}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <Form {...questionForm}>
-                      <form onSubmit={questionForm.handleSubmit(editingQuestion ? handleEditQuestion : handleCreateQuestion)} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField
-                            control={questionForm.control}
-                            name="type"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>{t.questionType}</FormLabel>
-                                <Select 
-                                  onValueChange={(value) => {
-                                    field.onChange(value);
-                                    setQuestionType(value as any);
-                                  }} 
-                                  value={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="multiple-choice">{t.multipleChoice}</SelectItem>
-                                    <SelectItem value="true-false">{t.trueFalse}</SelectItem>
-                                    <SelectItem value="short-answer">{t.shortAnswer}</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={questionForm.control}
-                            name="points"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>{t.questionPoints}</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    {...field} 
-                                    onChange={(e) => field.onChange(Number(e.target.value))}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        
-                        <FormField
-                          control={questionForm.control}
-                          name="question"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t.questionText}</FormLabel>
-                              <FormControl>
-                                <Textarea {...field} rows={3} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        {questionType === 'multiple-choice' && (
-                          <div className="space-y-4">
-                            <FormField
-                              control={questionForm.control}
-                              name="options"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{t.options}</FormLabel>
-                                  <div className="space-y-2">
-                                    {field.value?.map((option, index) => (
-                                      <Input
-                                        key={index}
-                                        placeholder={`${t.option} ${index + 1}`}
-                                        value={option}
-                                        onChange={(e) => {
-                                          const newOptions = [...(field.value || [])];
-                                          newOptions[index] = e.target.value;
-                                          field.onChange(newOptions);
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        )}
-                        
-                        <FormField
-                          control={questionForm.control}
-                          name="correctAnswer"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t.correctAnswer}</FormLabel>
-                              <FormControl>
-                                {questionType === 'true-false' ? (
-                                  <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="true">{t.true}</SelectItem>
-                                      <SelectItem value="false">{t.false}</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <Input {...field} />
-                                )}
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setIsQuestionDialogOpen(false)}>
-                            {t.cancel}
-                          </Button>
-                          <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                            {editingQuestion ? t.save : t.create}
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-                <Button variant="outline" onClick={() => setSelectedQuiz(null)}>
-                  ←
-                </Button>
-              </div>
+      {/* Question Management Dialog */}
+      <Dialog open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingQuestion ? t.editQuestion : t.addQuestion}</DialogTitle>
+            <DialogDescription>
+              Create or edit quiz questions
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleQuestionSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="type">{t.questionType}</Label>
+              <Select value={questionFormData.type} onValueChange={(value: 'multiple-choice' | 'true-false' | 'short-answer') => setQuestionFormData({...questionFormData, type: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="multiple-choice">{t.multipleChoice}</SelectItem>
+                  <SelectItem value="true-false">{t.trueFalse}</SelectItem>
+                  <SelectItem value="short-answer">{t.shortAnswer}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {selectedQuiz.questions.map((question, index) => (
-                <Card key={question.id} className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Badge variant="outline">{question.type}</Badge>
-                        <Badge variant="secondary">{question.points} {t.points}</Badge>
-                      </div>
-                      <p className="font-medium mb-2">{index + 1}. {question.question}</p>
-                      
-                      {question.type === 'multiple-choice' && question.options && (
-                        <div className="space-y-1 ml-4">
-                          {question.options.map((option, optIndex) => (
-                            <div key={optIndex} className="flex items-center space-x-2">
-                              {option === question.correctAnswer ? (
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <XCircle className="h-4 w-4 text-gray-400" />
-                              )}
-                              <span className={option === question.correctAnswer ? 'text-green-600 font-medium' : ''}>
-                                {option}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {question.type === 'true-false' && (
-                        <p className="ml-4 text-green-600 font-medium">
-                          {t.correctAnswer}: {question.correctAnswer === 'true' ? t.true : t.false}
-                        </p>
-                      )}
-                      
-                      {question.type === 'short-answer' && (
-                        <p className="ml-4 text-green-600 font-medium">
-                          {t.correctAnswer}: {question.correctAnswer}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => openQuestionDialog(question)}
+            <div>
+              <Label htmlFor="question">{t.questionText}</Label>
+              <Textarea
+                id="question"
+                value={questionFormData.question}
+                onChange={(e) => setQuestionFormData({...questionFormData, question: e.target.value})}
+                required
+              />
+            </div>
+            {questionFormData.type === 'multiple-choice' && (
+              <div>
+                <Label>{t.options}</Label>
+                {questionFormData.options.map((option, index) => (
+                  <div key={index} className="flex gap-2 mt-2">
+                    <Input
+                      value={option}
+                      onChange={(e) => updateOption(index, e.target.value)}
+                      placeholder={`Option ${index + 1}`}
+                    />
+                    {questionFormData.options.length > 2 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeOption(index)}
                       >
-                        <Edit className="h-4 w-4" />
+                        {t.removeOption}
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{t.delete} {t.questionText}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete this question?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDeleteQuestion(question.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              {t.delete}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                    )}
                   </div>
-                </Card>
-              ))}
-              
-              {selectedQuiz.questions.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  No questions added yet. Click "{t.addQuestion}" to get started.
-                </div>
+                ))}
+                {questionFormData.options.length < 4 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addOption}
+                    className="mt-2"
+                  >
+                    {t.addOption}
+                  </Button>
+                )}
+              </div>
+            )}
+            <div>
+              <Label htmlFor="correctAnswer">{t.correctAnswer}</Label>
+              {questionFormData.type === 'true-false' ? (
+                <Select value={questionFormData.correctAnswer} onValueChange={(value) => setQuestionFormData({...questionFormData, correctAnswer: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">True</SelectItem>
+                    <SelectItem value="false">False</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="correctAnswer"
+                  value={questionFormData.correctAnswer}
+                  onChange={(e) => setQuestionFormData({...questionFormData, correctAnswer: e.target.value})}
+                  required
+                />
               )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div>
+              <Label htmlFor="points">{t.points}</Label>
+              <Input
+                id="points"
+                type="number"
+                value={questionFormData.points}
+                onChange={(e) => setQuestionFormData({...questionFormData, points: Number(e.target.value)})}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsQuestionDialogOpen(false)}>
+                {t.cancel}
+              </Button>
+              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                {t.save}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
