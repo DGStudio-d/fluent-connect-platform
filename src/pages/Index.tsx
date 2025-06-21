@@ -4,7 +4,7 @@ import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
 import LanguageGrid from '@/components/LanguageGrid';
 import FeaturedSessions from '@/components/FeaturedSessions';
-import Testimonials from '@/components/Testimonials';
+import TestimonialsCarousel from '@/components/TestimonialsCarousel';
 import PaymentSection from '@/components/PaymentSection';
 import Footer from '@/components/Footer';
 import WhatsAppFloat from '@/components/WhatsAppFloat';
@@ -28,7 +28,7 @@ const Index = () => {
         <LanguageGrid language={language} />
         <FeaturedSessions language={language} />
         <PaymentSection language={language} />
-        <Testimonials language={language} />
+        <TestimonialsCarousel language={language} />
         <Footer language={language} />
         <WhatsAppFloat language={language} />
       </div>
